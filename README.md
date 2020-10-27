@@ -1,7 +1,8 @@
 
 # FAQ
 1) [conda使用](https://github.com/desneo/ML/blob/main/tools/conda.md)
-
+2）[numpy]()
+3) [python使用]
 
 # 1.经典网络
 ## 1.1分类网络
