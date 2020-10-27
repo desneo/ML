@@ -5,7 +5,7 @@
 
 # 1.经典网络
 ## 1.1分类网络
-### Lenet
+### [Lenet-conv+linear](https://zhuanlan.zhihu.com/p/31612931)
 ### Alexnet
 ### VGG16
 ### GoogleNet
