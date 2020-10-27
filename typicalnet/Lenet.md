@@ -1,4 +1,3 @@
-```
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
 from torch import nn
@@ -9,9 +8,13 @@ import numpy as np
 from PIL import Image
 from torch.autograd import Variable
 import torch
+import torch.nn.functional as F
 
-trainPath = "G:\\practice\\pycharm\\datasets\\mnistasjpg\\trainingSet\\trainingSet\\*\\*.jpg"
-trainTestPath = "G:\\practice\\pycharm\\datasets\\mnistasjpg\\trainingSample\\trainingSample\\*\\*.jpg"
+## load mnist dataset
+use_cuda = torch.cuda.is_available()
+
+trainPath = "D:\\practice\\pytorch\\2.5_t_classifier\\dataset\\mnistasjpg\\trainingSet\\trainingSet\\*\\*.jpg"
+trainTestPath = "D:\\practice\\pytorch\\2.5_t_classifier\\dataset\\mnistasjpg\\trainingSample\\trainingSample\\*\\*.jpg"
 
 
 # 定义数据源
@@ -24,91 +27,248 @@ class MnistDataset(Dataset):
         return len(self.files)
 
     def __getitem__(self, idx):
-        img = np.asarray(Image.open(self.files[idx]))
+        img = np.asarray(Image.open(self.files[idx])).reshape((-1, 28, 28))
         label = os.path.abspath(self.files[idx]).split("\\")[-2]
-        return img,label
+        return img, label
 
 
 trainMiniSet = MnistDataset(trainPath)
 trainTestMiniSet = MnistDataset(trainTestPath)
-trainDataLoader = DataLoader(trainMiniSet, batch_size=64, num_workers=0, shuffle=True)
-trainTestDataLoader = DataLoader(trainTestMiniSet, batch_size=64, num_workers=0, shuffle=True)
+trainDataLoader = DataLoader(trainMiniSet, batch_size=100, num_workers=0, shuffle=True)
+trainTestDataLoader = DataLoader(trainTestMiniSet, batch_size=100, num_workers=0, shuffle=True)
 
 
-# 定义网络结构
-class Net(nn.Module):
+print('==>>> total trainning batch number: {}'.format(len(trainDataLoader)))
+print('==>>> total testing batch number: {}'.format(len(trainTestDataLoader)))
+
+class LeNet(nn.Module):
     def __init__(self):
-        super.__init__()
-        self.conv1 = nn.Conv2d(1, 10, kernel_size=5)
-        self.conv2 = nn.Conv2d(10, 20, kernel_size=5)
-        self.conv2_drop = nn.Dropout2d()
-        self.fc1 = nn.Linear(320, 50)
-        self.fc2 = nn.Linear(50, 10)
+        super(LeNet, self).__init__()
+        self.conv1 = nn.Conv2d(1, 20, 5, 1)
+        self.pooling1 = nn.MaxPool2d((3, stride=2))
+        self.conv2 = nn.Conv2d(20, 50, 5, 1)
+        self.fc1 = nn.Linear(4 * 4 * 50, 500)
+        self.fc2 = nn.Linear(500, 10)
 
     def forward(self, x):
-        x = nn.ReLU(nn.MaxPool2d(self.conv1(x), 2))
-        x = nn.ReLU(nn.MaxPool2d(self.conv2_drop(self.conv2(x)), 2))
-        x = nn.ReLU(self.fc1(x))
-        x = nn.Dropout
-
-
-# 定义网络结构
-class Model(nn.Module):
-    def __init__(self):
-        super(Model,self).__init__()
-        self.conv1 = nn.Sequential(
-            nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1),
-            nn.ReLU(),
-            nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
-            nn.ReLU(),
-            nn.MaxPool2d(stride=2, kernel_size=2))
-
-        self.dense = nn.Sequential(
-            nn.Linear(14 * 14 * 128, 1024),
-            nn.ReLU(),
-            nn.Dropout(p=0.5),
-            nn.Linear(1024, 10))
-
-    def forward(self, x):
-        x = self.conv1(x)
-        x = self.dense(x)
+        x = F.relu(self.conv1(x.float()))
+        x = F.max_pool2d(x, 2, 2)
+        x = F.relu(self.conv2(x))
+        x = F.max_pool2d(x, 2, 2)
+        x = x.view(-1, 4 * 4 * 50)
+        x = F.relu(self.fc1(x))
+        x = self.fc2(x)
         return x
 
+    def name(self):
+        return "LeNet"
 
-model = Model()
-cost = nn.CrossEntropyLoss()
-optimizer = optim.Adam(model.parameters())
+class LeNet5(nn.Module):
+    def __init__(self):
+        super(LeNet, self).__init__()
+        self.conv1 = nn.Conv2d(1, 6, 5, 1)
+        self.conv2 = nn.Conv2d(6, 50, 5, 1)
+        self.fc1 = nn.Linear(4 * 4 * 50, 500)
+        self.fc2 = nn.Linear(500, 10)
 
-print(model)
+    def forward(self, x):
+        x = F.relu(self.conv1(x.float()))
+        x = F.max_pool2d(x, 2, 2)
+        x = F.relu(self.conv2(x))
+        x = F.max_pool2d(x, 2, 2)
+        x = x.view(-1, 4 * 4 * 50)
+        x = F.relu(self.fc1(x))
+        x = self.fc2(x)
+        return x
 
-n_epochs = 5
+    def name(self):
+        return "LeNet"
 
-for epoch in range(n_epochs):
-    running_loss = 0.0
-    running_correct = 0
-    for data, label in trainDataLoader:
-        x_train = data
-        y_train = label
-        x_train = Variable(x_train)
-        # x_train = Variable(x_train)
-        outputs = model(x_train)
-        _,pred = torch.max(outputs, 1)
+## training
+model = LeNet()
+
+if use_cuda:
+    model = model.cuda()
+
+optimizer = optim.SGD(model.parameters(), lr=0.02, momentum=0.9)
+
+criterion = nn.CrossEntropyLoss()
+
+for epoch in range(1):
+    # trainning
+    ave_loss = 0
+    for batch_idx, (x, target) in enumerate(trainDataLoader):
         optimizer.zero_grad()
-        loss = cost(outputs, y_train)
-
+        if use_cuda:
+            x, target = x.cuda(), target.cuda()
+        label = np.array(target, dtype=float)
+        label_tendor = torch.from_numpy(label)
+        x, target = Variable(x), Variable(label_tendor)
+        x = x.float()
+        out = model(x)
+        loss = criterion(out, target.long())
+        ave_loss = ave_loss * 0.9 + loss.item() * 0.1
         loss.backward()
         optimizer.step()
-        running_loss += loss.data
-        running_correct += torch.sum((pred == y_train.data))
+        if (batch_idx + 1) % 100 == 0 or (batch_idx + 1) == len(trainDataLoader):
+            # print('==>>> epoch: {}, batch index: {}, train loss: {:.6f}'.format(  epoch, batch_idx + 1, ave_loss))
+            print('==>>> epoch: {}, batch index: {}, train loss: {:.6f}'.format(  epoch, batch_idx + 1, loss.item()))
+    # testing
+    correct_cnt, ave_loss = 0, 0
+    total_cnt = 0
+    for batch_idx, (x, target) in enumerate(trainTestDataLoader):
+        if use_cuda:
+            x, target = x.cuda(), target.cuda()
+        label = np.array(target, dtype=float)
+        label_tendor = torch.from_numpy(label)
+        with torch.no_grad():
+            x, target = Variable(x), Variable(label_tendor)
+        out = model(x)
+        loss = criterion(out, target.long())
+        _, pred_label = torch.max(out.data, 1)
+        total_cnt += x.data.size()[0]
+        correct_cnt += (pred_label == target.data).sum()
+        # smooth average
+        ave_loss = ave_loss * 0.9 + loss.item() * 0.1
 
-    testing_correct = 0
-    for data in trainTestDataLoader:
-        x_test,y_test = data
-        x_test, y_test = Variable(x_test), Variable(y_test)
-        outputs = model(x_test)
-        _, pred = torch.max(outputs.data, 1)
-        testing_correct = torch.sum(pred == y_test.data)
+        if (batch_idx + 1) % 100 == 0 or (batch_idx + 1) == len(trainTestDataLoader):
+            print('==>>> epoch: {}, batch index: {}, test loss: {:.6f}, acc: {:.3f}'.format(epoch, batch_idx + 1, ave_loss, correct_cnt * 1.0 / total_cnt))
 
-    # print("Loss is:{:.4f}, Train Accuracy is:{:.4f}%, Test Accuracy is:{:.4f}".format(running_loss/len()))
-    print(" Train Accuracy is:{:.4f}%, Test Accuracy is:{:.4f}".format(100*running_correct / len(trainMiniSet), 100*testing_correct/len(trainTestMiniSet)))
-```
+torch.save(model.state_dict(), model.name())
+from torch.utils.data import DataLoader
+from torch.utils.data import Dataset
+from torch import nn
+from torch import optim
+import glob
+import os
+import numpy as np
+from PIL import Image
+from torch.autograd import Variable
+import torch
+import torch.nn.functional as F
+
+## load mnist dataset
+use_cuda = torch.cuda.is_available()
+
+trainPath = "D:\\practice\\pytorch\\2.5_t_classifier\\dataset\\mnistasjpg\\trainingSet\\trainingSet\\*\\*.jpg"
+trainTestPath = "D:\\practice\\pytorch\\2.5_t_classifier\\dataset\\mnistasjpg\\trainingSample\\trainingSample\\*\\*.jpg"
+
+
+# 定义数据源
+class MnistDataset(Dataset):
+    def __init__(self, root_dir):
+        self.files = glob.glob(root_dir)
+        self.x = 123
+
+    def __len__(self):
+        return len(self.files)
+
+    def __getitem__(self, idx):
+        img = np.asarray(Image.open(self.files[idx])).reshape((-1, 28, 28))
+        label = os.path.abspath(self.files[idx]).split("\\")[-2]
+        return img, label
+
+
+trainMiniSet = MnistDataset(trainPath)
+trainTestMiniSet = MnistDataset(trainTestPath)
+trainDataLoader = DataLoader(trainMiniSet, batch_size=100, num_workers=0, shuffle=True)
+trainTestDataLoader = DataLoader(trainTestMiniSet, batch_size=100, num_workers=0, shuffle=True)
+
+
+print('==>>> total trainning batch number: {}'.format(len(trainDataLoader)))
+print('==>>> total testing batch number: {}'.format(len(trainTestDataLoader)))
+
+class LeNet(nn.Module):
+    def __init__(self):
+        super(LeNet, self).__init__()
+        self.conv1 = nn.Conv2d(1, 20, 5, 1)
+        self.pooling1 = nn.MaxPool2d((3, stride=2))
+        self.conv2 = nn.Conv2d(20, 50, 5, 1)
+        self.fc1 = nn.Linear(4 * 4 * 50, 500)
+        self.fc2 = nn.Linear(500, 10)
+
+    def forward(self, x):
+        x = F.relu(self.conv1(x.float()))
+        x = F.max_pool2d(x, 2, 2)
+        x = F.relu(self.conv2(x))
+        x = F.max_pool2d(x, 2, 2)
+        x = x.view(-1, 4 * 4 * 50)
+        x = F.relu(self.fc1(x))
+        x = self.fc2(x)
+        return x
+
+    def name(self):
+        return "LeNet"
+
+class LeNet5(nn.Module):
+    def __init__(self):
+        super(LeNet, self).__init__()
+        self.conv1 = nn.Conv2d(1, 6, 5, 1)
+        self.conv2 = nn.Conv2d(6, 50, 5, 1)
+        self.fc1 = nn.Linear(4 * 4 * 50, 500)
+        self.fc2 = nn.Linear(500, 10)
+
+    def forward(self, x):
+        x = F.relu(self.conv1(x.float()))
+        x = F.max_pool2d(x, 2, 2)
+        x = F.relu(self.conv2(x))
+        x = F.max_pool2d(x, 2, 2)
+        x = x.view(-1, 4 * 4 * 50)
+        x = F.relu(self.fc1(x))
+        x = self.fc2(x)
+        return x
+
+    def name(self):
+        return "LeNet"
+
+## training
+model = LeNet()
+
+if use_cuda:
+    model = model.cuda()
+
+optimizer = optim.SGD(model.parameters(), lr=0.02, momentum=0.9)
+
+criterion = nn.CrossEntropyLoss()
+
+for epoch in range(1):
+    # trainning
+    ave_loss = 0
+    for batch_idx, (x, target) in enumerate(trainDataLoader):
+        optimizer.zero_grad()
+        if use_cuda:
+            x, target = x.cuda(), target.cuda()
+        label = np.array(target, dtype=float)
+        label_tendor = torch.from_numpy(label)
+        x, target = Variable(x), Variable(label_tendor)
+        x = x.float()
+        out = model(x)
+        loss = criterion(out, target.long())
+        ave_loss = ave_loss * 0.9 + loss.item() * 0.1
+        loss.backward()
+        optimizer.step()
+        if (batch_idx + 1) % 100 == 0 or (batch_idx + 1) == len(trainDataLoader):
+            # print('==>>> epoch: {}, batch index: {}, train loss: {:.6f}'.format(  epoch, batch_idx + 1, ave_loss))
+            print('==>>> epoch: {}, batch index: {}, train loss: {:.6f}'.format(  epoch, batch_idx + 1, loss.item()))
+    # testing
+    correct_cnt, ave_loss = 0, 0
+    total_cnt = 0
+    for batch_idx, (x, target) in enumerate(trainTestDataLoader):
+        if use_cuda:
+            x, target = x.cuda(), target.cuda()
+        label = np.array(target, dtype=float)
+        label_tendor = torch.from_numpy(label)
+        with torch.no_grad():
+            x, target = Variable(x), Variable(label_tendor)
+        out = model(x)
+        loss = criterion(out, target.long())
+        _, pred_label = torch.max(out.data, 1)
+        total_cnt += x.data.size()[0]
+        correct_cnt += (pred_label == target.data).sum()
+        # smooth average
+        ave_loss = ave_loss * 0.9 + loss.item() * 0.1
+
+        if (batch_idx + 1) % 100 == 0 or (batch_idx + 1) == len(trainTestDataLoader):
+            print('==>>> epoch: {}, batch index: {}, test loss: {:.6f}, acc: {:.3f}'.format(epoch, batch_idx + 1, ave_loss, correct_cnt * 1.0 / total_cnt))
+
+torch.save(model.state_dict(), model.name())
