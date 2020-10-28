@@ -13,8 +13,8 @@ import torch.nn.functional as F
 ## load mnist dataset
 use_cuda = torch.cuda.is_available()
 
-trainPath = "G:\\practice\\pycharm\\datasets\\mnistasjpg\\trainingSet\\trainingSet\\*\\*.jpg"
-trainTestPath = "G:\\practice\\pycharm\\datasets\\mnistasjpg\\trainingSample\\trainingSample\\*\\*.jpg"
+trainPath = "D:\\practice\\pytorch\\2.5_t_classifier\\dataset\\mnistasjpg\\trainingSet\\trainingSet\\*\\*.jpg"
+trainTestPath = "D:\\practice\\pytorch\\2.5_t_classifier\\dataset\\mnistasjpg\\trainingSample\\trainingSample\\*\\*.jpg"
 
 
 # 定义数据源
@@ -28,7 +28,7 @@ class MnistDataset(Dataset):
 
     def __getitem__(self, idx):
         img = np.asarray(Image.open(self.files[idx])).reshape((-1, 28, 28))
-        label = os.path.abspath(self.files[idx]).split("\\")[-2]
+        label = int(os.path.abspath(self.files[idx]).split("\\")[-2])
         return img, label
 
 
@@ -87,9 +87,16 @@ for epoch in range(1):
             x, label_tendor = x.cuda(), label_tendor.cuda()  # 变量搬到显卡上
         x, target = Variable(x), Variable(label_tendor)  # 包装变量
         x = x.float()
+        print("\n\nx-----")
+        #print(x)
+
         out = model(x)
-        loss = criterion(out, target.long())
-        ave_loss = ave_loss * 0.9 + loss.item() * 0.1
+        print("\n\nOUT-----")
+        #print(out)
+
+        loss = criterion(out, label_tendor)
+        print("\n\nloss-----")
+        #print(loss)
         loss.backward()
         optimizer.step()
         print('==>>> epoch: {}, batch index: {}, train loss: {:.6f}'.format(epoch, batch_idx + 1, loss.item()))
