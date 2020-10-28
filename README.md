@@ -1,7 +1,7 @@
 
 # FAQ
 1) [conda使用](https://github.com/desneo/ML/blob/main/tools/conda.md) 
-2) [numpy使用]() 
+2) [numpy使用](https://github.com/desneo/ML/blob/main/tools/numpy.md) 
 3) [python使用](https://github.com/desneo/ML/blob/main/tools/python.md) 
 4) [pytorch使用](https://github.com/desneo/ML/blob/main/tools/pytorch.md)
 
