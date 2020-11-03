@@ -66,7 +66,7 @@ if __name__ == '__main__':
     trainMiniSet = MnistDataset(trainPath)
     trainTestMiniSet = MnistDataset(trainTestPath)
     trainDataLoader = DataLoader(trainMiniSet, batch_size=100, num_workers=1, shuffle=True)
-    trainTestDataLoader = DataLoader(trainTestMiniSet, batch_size=100, num_workers=1, shuffle=True)
+    trainTestDataLoader = DataLoader(trainTestMiniSet, batch_size=1, num_workers=1, shuffle=True)
 
     print('==>>> total trainning batch number: {}'.format(len(trainDataLoader)))
     print('==>>> total testing batch number: {}'.format(len(trainTestDataLoader)))
@@ -76,7 +76,7 @@ if __name__ == '__main__':
     if use_cuda:
         model = model.cuda()
 
-    optimizer = optim.SGD(model.parameters(), lr = 0.1)
+    optimizer = optim.SGD(model.parameters(), lr=0.01)
 
     criterion = nn.CrossEntropyLoss()
 
@@ -91,7 +91,7 @@ if __name__ == '__main__':
                 x, label_tendor = x.cuda(), label_tendor.cuda()  # 变量搬到显卡上
             x, target = Variable(x), Variable(label_tendor)  # 包装变量
             x = x.float()
-            print("\n\nx-----")
+            # print("\n\nx-----")
             #print(x)
 
             out = model(x)
@@ -105,20 +105,20 @@ if __name__ == '__main__':
             optimizer.step()
             # print('==>>> epoch: {}, batch index: {}, train loss: {:.6f}'.format(epoch, batch_idx + 1, loss.item()))
             if (batch_idx + 1) % 100 == 0 or (batch_idx + 1) == len(trainDataLoader):
-                print('==>>> epoch: {}, batch index: {}, train loss: {:.6f}'.format(  epoch, batch_idx + 1, ave_loss))
+                print('==>>> epoch: {}, batch index: {}, train loss: {:.6f}'.format(  epoch, batch_idx + 1, loss.item()))
               #  print('==>>> epoch: {}, batch index: {}, train loss: {:.6f}'.format(epoch, batch_idx + 1, loss.item()))
+
         # testing
         correct_cnt, ave_loss = 0, 0
         total_cnt = 0
         for batch_idx, (x, target) in enumerate(trainTestDataLoader):
+            label_array = np.array(target, dtype=float)
+            label_tensor = torch.from_numpy(label_array)
             if use_cuda:
-                x, target = x.cuda(), target.cuda()
-            label = np.array(target, dtype=float)
-            label_tendor = torch.from_numpy(label)
+                x, target = x.cuda(), label_tensor.cuda()
             with torch.no_grad():
-                x, target = Variable(x), Variable(label_tendor)
+                x, target = Variable(x), Variable(label_tensor)
             out = model(x)
-            loss = criterion(out, target.long())
             _, pred_label = torch.max(out.data, 1)
             total_cnt += x.data.size()[0]
             correct_cnt += (pred_label == target.data).sum()
