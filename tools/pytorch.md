@@ -3,6 +3,23 @@
 ```
     label_tendor = torch.from_numpy(label)    // ndArray转tensor
 ```
+### [torch.max](https://pytorch.org/docs/stable/generated/torch.max.html#torch.max)
+```
+>>> import torch
+>>> a = torch.randn(4,4)
+>>> print(a)
+tensor([[-2.8850,  0.1006, -1.7179,  0.1841],
+        [ 0.0780, -0.4688, -0.1890,  2.0924],
+        [-0.6899, -0.8053,  0.3402, -0.8429],
+        [ 1.2685, -1.1536,  1.0295, -0.0803]])
+>>> torch.max(a,1)  //参数2，0-列的最大值，1-行的最大值
+torch.return_types.max(
+values=tensor([0.1841, 2.0924, 0.3402, 1.2685]),
+indices=tensor([3, 3, 2, 0]))
+>>> x,y = torch.max(a,1)
+>>> y
+tensor([3, 3, 2, 0])
+```
 
 
 

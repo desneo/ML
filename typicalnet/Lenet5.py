@@ -119,15 +119,6 @@ if __name__ == '__main__':
             with torch.no_grad():
                 x, target = Variable(x), Variable(label_tensor)
             out = model(x)
-            _, pred_label = torch.max(out.data, 1)
-            total_cnt += x.data.size()[0]
-            correct_cnt += (pred_label == target.data).sum()
-            # smooth average
-            ave_loss = ave_loss * 0.9 + loss.item() * 0.1
-
-            if (batch_idx + 1) % 100 == 0 or (batch_idx + 1) == len(trainTestDataLoader):
-                print('==>>> epoch: {}, batch index: {}, test loss: {:.6f}, acc: {:.3f}'.format(epoch, batch_idx + 1,
-                                                                                                ave_loss,
-                                                                                                correct_cnt * 1.0 / total_cnt))
-
+            x, y = torch.max(out, 1)
+            print("")
     torch.save(model.state_dict(), model.name())
