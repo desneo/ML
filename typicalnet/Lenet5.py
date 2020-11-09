@@ -66,7 +66,7 @@ if __name__ == '__main__':
     trainMiniSet = MnistDataset(trainPath)
     trainTestMiniSet = MnistDataset(trainTestPath)
     trainDataLoader = DataLoader(trainMiniSet, batch_size=100, num_workers=1, shuffle=True)
-    trainTestDataLoader = DataLoader(trainTestMiniSet, batch_size=1, num_workers=1, shuffle=True)
+    trainTestDataLoader = DataLoader(trainTestMiniSet, batch_size=100, num_workers=1, shuffle=True)
 
     print('==>>> total trainning batch number: {}'.format(len(trainDataLoader)))
     print('==>>> total testing batch number: {}'.format(len(trainTestDataLoader)))
@@ -80,7 +80,7 @@ if __name__ == '__main__':
 
     criterion = nn.CrossEntropyLoss()
 
-    for epoch in range(1):
+    for epoch in range(10):
         # trainning
         ave_loss = 0
         for batch_idx, (x, target) in enumerate(trainDataLoader):
@@ -91,22 +91,15 @@ if __name__ == '__main__':
                 x, label_tendor = x.cuda(), label_tendor.cuda()  # 变量搬到显卡上
             x, target = Variable(x), Variable(label_tendor)  # 包装变量
             x = x.float()
-            # print("\n\nx-----")
-            #print(x)
 
             out = model(x)
-            #print("\n\nOUT-----")
-            #print(out)
 
             loss = criterion(out, label_tendor.long())
-            #print("\n\nloss-----")
-            #print(loss)
             loss.backward()
             optimizer.step()
             # print('==>>> epoch: {}, batch index: {}, train loss: {:.6f}'.format(epoch, batch_idx + 1, loss.item()))
             if (batch_idx + 1) % 100 == 0 or (batch_idx + 1) == len(trainDataLoader):
                 print('==>>> epoch: {}, batch index: {}, train loss: {:.6f}'.format(  epoch, batch_idx + 1, loss.item()))
-              #  print('==>>> epoch: {}, batch index: {}, train loss: {:.6f}'.format(epoch, batch_idx + 1, loss.item()))
 
         # testing
         correct_cnt, ave_loss = 0, 0
@@ -117,8 +110,9 @@ if __name__ == '__main__':
             if use_cuda:
                 x, target = x.cuda(), label_tensor.cuda()
             with torch.no_grad():
-                x, target = Variable(x), Variable(label_tensor)
+                x = Variable(x)
             out = model(x)
-            x, y = torch.max(out, 1)
-            print("")
+            _, pred = torch.max(out, 1)
+            total_cnt += torch.sum(pred == target).item()
+            print("accuracy is:{}".format(total_cnt/(batch_idx*100 + len(target))))
     torch.save(model.state_dict(), model.name())
